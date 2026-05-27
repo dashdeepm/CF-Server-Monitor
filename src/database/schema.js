@@ -26,6 +26,7 @@ export async function initDatabase(db) {
         net_out_speed TEXT DEFAULT '0',
         os TEXT DEFAULT '',
         cpu_info TEXT DEFAULT '',
+        cpu_cores TEXT DEFAULT '0',
         arch TEXT DEFAULT '',
         boot_time TEXT DEFAULT '',
         ram_used TEXT DEFAULT '0',
@@ -106,7 +107,8 @@ export async function initDatabase(db) {
       monthly_tx: "TEXT DEFAULT '0'",
       last_rx: "TEXT DEFAULT '0'",
       last_tx: "TEXT DEFAULT '0'",
-      reset_month: "TEXT DEFAULT ''"
+      reset_month: "TEXT DEFAULT ''",
+      cpu_cores: "TEXT DEFAULT '0'"
     };
 
     for (const [colName, colDef] of Object.entries(newCols)) {

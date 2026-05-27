@@ -545,6 +545,10 @@ export async function handleServerDetail(request, env, sys, viewId) {
           <span class="sysinfo-value" id="val-cpuinfo" style="font-size:11px;">${(server.cpu_info || 'N/A').substring(0, 40)}</span>
         </div>
         <div class="sysinfo-item">
+          <span class="sysinfo-label">⚙️ CPU Cores</span>
+          <span class="sysinfo-value" id="val-cpucores">${server.cpu_cores || 'N/A'}</span>
+        </div>
+        <div class="sysinfo-item">
           <span class="sysinfo-label">📊 Load Average</span>
           <span class="sysinfo-value highlight" id="val-load">${server.load_avg || '0.00'}</span>
         </div>
@@ -1146,7 +1150,7 @@ export async function handleServerDetail(request, env, sys, viewId) {
         const lastUpdatedTime = new Date(data.last_updated).getTime();
         const isOnline = (Date.now() - lastUpdatedTime) < 120000;
         const badge = document.getElementById('head-status');
-        badge.innerHTML = \`<span class="pulse-dot \${isOnline ? 'online' : 'offline'}"></span>\${isOnline ? 'CONNECTED' : 'DISCONNECTED'}\`;
+        badge.innerHTML = \`<span class="pulse-dot \${isOnline ? 'online' : 'offline'}"></span>\${isOnline ? 'ONLINE' : 'OFFLINE'}\`;
         badge.className = 'status-badge ' + (isOnline ? 'online' : 'offline');
         
         // 更新国旗
@@ -1185,6 +1189,7 @@ export async function handleServerDetail(request, env, sys, viewId) {
         document.getElementById('val-uptime').innerText = data.uptime || 'N/A';
         document.getElementById('val-arch').innerText = data.arch || 'N/A';
         document.getElementById('val-os').innerText = data.os || 'N/A';
+        document.getElementById('val-cpucores').innerText = data.cpu_cores || 'N/A';
         document.getElementById('val-load').innerText = data.load_avg || '0.00';
         document.getElementById('val-boot').innerText = data.boot_time || 'N/A';
         document.getElementById('val-ram-total').innerText = (parseFloat(data.ram_total)/1024).toFixed(1) + ' GiB';
