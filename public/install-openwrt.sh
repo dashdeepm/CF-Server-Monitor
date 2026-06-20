@@ -340,7 +340,7 @@ create_script() {
 
     cat > "${SCRIPT_FILE}" << 'PROBE_EOF'
 #!/bin/sh
-set -eu
+set +eu
 
 PID_FILE="/var/run/cf-probe.pid"
 echo $$ > "$PID_FILE"

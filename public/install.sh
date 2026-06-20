@@ -150,8 +150,7 @@ create_script() {
 
     cat > "${SCRIPT_FILE}" << 'PROBE_EOF'
 #!/bin/bash
-# 激活严格的未定义变量检查与错误即刻退出
-set -eu
+set +eu
 
 CONFIG_DIR="/etc/config/cf-probe"
 CONFIG_FILE="${CONFIG_DIR}/config.conf"
