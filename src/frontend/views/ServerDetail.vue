@@ -292,7 +292,7 @@ import { hasMultipleApiBases } from '../utils/config.js'
 import Chart from 'chart.js/auto'
 import 'chartjs-adapter-date-fns'
 import { t, currentLang, useTranslation } from '../utils/i18n'
-import { CHART, GAP_BREAK } from '../utils/constants'
+import { CHART, HISTORY_SAMPLE_INTERVAL } from '../utils/constants'
 import { formatDateTime } from '../utils/time.js'
 import useTheme from '../composables/useTheme'
 
@@ -642,32 +642,53 @@ const updateChartsTheme = (theme) => {
   })
 }
 
-const getMaxGapMs = () => {
-  if (currentHours.value <= 1) return GAP_BREAK.LESS_THAN_1_HOUR
-  if (currentHours.value <= 6) return GAP_BREAK.LESS_THAN_6_HOURS
-  if (currentHours.value <= 12) return GAP_BREAK.LESS_THAN_12_HOURS
-  if (currentHours.value <= 24) return GAP_BREAK.LESS_THAN_24_HOURS
-  return GAP_BREAK.MORE_THAN_24_HOURS
+const getHistoryGapBreakMs = (hours = currentHours.value) => {
+  if (hours > 168) return HISTORY_SAMPLE_INTERVAL.OVER_168_HOURS
+  if (hours >= 96) return HISTORY_SAMPLE_INTERVAL.FROM_96_HOURS
+  if (hours >= 48) return HISTORY_SAMPLE_INTERVAL.FROM_48_HOURS
+  if (hours >= 24) return HISTORY_SAMPLE_INTERVAL.FROM_24_HOURS
+  if (hours >= 12) return HISTORY_SAMPLE_INTERVAL.FROM_12_HOURS
+  return HISTORY_SAMPLE_INTERVAL.BELOW_12_HOURS
+}
+
+const shouldBreakGap = (prevPoint, nextPoint) => {
+  if (!prevPoint || !nextPoint) return false
+  const prevTime = Number(prevPoint.x)
+  const nextTime = Number(nextPoint.x)
+  return Number.isFinite(prevTime) && Number.isFinite(nextTime) && nextTime - prevTime > getHistoryGapBreakMs()
 }
 
 const applyGapBreak = (data) => {
-  // 超过1小时的数据不使用断点，图表直接连续连接
-  if (currentHours.value > 1) return data
   if (!data || data.length < 2) return data
-  
-  const maxGapMs = getMaxGapMs()
   
   const result = []
   for (let i = 0; i < data.length; i++) {
     result.push(data[i])
     if (i < data.length - 1) {
-      const gap = data[i + 1].x - data[i].x
-      if (gap > maxGapMs) {
+      if (shouldBreakGap(data[i], data[i + 1])) {
+        const gap = data[i + 1].x - data[i].x
         result.push({ x: data[i].x + gap / 2, y: null })
       }
     }
   }
   return result
+}
+
+const appendPointWithGapBreak = (data, point) => {
+  if (!Array.isArray(data)) return [point]
+  let lastPoint = null
+  for (let i = data.length - 1; i >= 0; i--) {
+    const item = data[i]
+    if (item && item.y !== null && item.y !== undefined) {
+      lastPoint = item
+      break
+    }
+  }
+  if (lastPoint && shouldBreakGap(lastPoint, point)) {
+    data.push({ x: lastPoint.x + (point.x - lastPoint.x) / 2, y: null })
+  }
+  data.push(point)
+  return data
 }
 
 const sampleData = (dataPoints) => {
@@ -846,9 +867,9 @@ const appendDataToChart = (chart, datasetIndex, timestamp, value, isPing = false
     yVal = parseFloat(value) || 0
   }
   
-  dataset.data.push({ x: time, y: yVal })
+  dataset.data = appendPointWithGapBreak(dataset.data, { x: time, y: yVal })
   
-  if (dataset.data.length > CHART.MAX_DATA_POINTS) {
+  while (dataset.data.length > CHART.MAX_DATA_POINTS) {
     dataset.data.shift()
   }
   
@@ -874,8 +895,8 @@ const appendLoadChartData = (timestamp, loadAvg) => {
   const startTime = endTime - currentHours.value * 60 * 60 * 1000
 
   for (let i = 0; i < 3; i++) {
-    chart.data.datasets[i].data.push({ x: time, y: loads[i] })
-    if (chart.data.datasets[i].data.length > CHART.MAX_DATA_POINTS) {
+    chart.data.datasets[i].data = appendPointWithGapBreak(chart.data.datasets[i].data, { x: time, y: loads[i] })
+    while (chart.data.datasets[i].data.length > CHART.MAX_DATA_POINTS) {
       chart.data.datasets[i].data.shift()
     }
     chart.data.datasets[i].data = chart.data.datasets[i].data.filter(d => d.x >= startTime)
