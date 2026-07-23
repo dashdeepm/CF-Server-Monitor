@@ -7,6 +7,8 @@ export const SITE_FIELDS = ['is_public', 'show_price', 'show_expire', 'show_tf',
 
 const SITE_SETTINGS_TTL = 120 * 1000;
 const JWT_SECRET_MIN_LENGTH = 32;
+const LEGACY_CUSTOM_BD = 'lf3-ips.zstaticcdn.com';
+const CURRENT_CUSTOM_BD = 'ip.zstaticcdn.com';
 export const TG_NOTIFY_MINUTES_MIN = 2;
 export const TG_NOTIFY_MINUTES_MAX = 30;
 export const TG_NOTIFY_LEGACY_TRUE_MINUTES = 5;
@@ -108,6 +110,10 @@ function copyFields(target, source, fields) {
   }
 }
 
+function normalizeCustomBd(value) {
+  return value === LEGACY_CUSTOM_BD ? CURRENT_CUSTOM_BD : value;
+}
+
 export function normalizeDisplayMode(value, fallback = 'bar') {
   const mode = String(value || '').trim().toLowerCase();
   if (mode === 'list') return 'table';
@@ -202,6 +208,13 @@ export async function loadSiteSettings(db) {
       result.jwt_secret = await ensurePersistedJwtSecret(db, result, siteOptions);
     }
     result.tg_notify = normalizeTgNotify(result.tg_notify);
+    const normalizedCustomBd = normalizeCustomBd(result.custom_bd);
+    if (normalizedCustomBd !== result.custom_bd) {
+      result.custom_bd = normalizedCustomBd;
+      await saveSiteOptions(db, { custom_bd: normalizedCustomBd });
+    } else {
+      result.custom_bd = normalizedCustomBd;
+    }
   } catch (e) {
     console.error('加载站点设置失败:', e);
   }
@@ -281,6 +294,7 @@ export async function saveSiteOptions(db, updates) {
   
   const siteOptions = { ...legacySiteOptions, ...existingSiteOptions, ...updates };
   siteOptions.tg_notify = normalizeTgNotify(siteOptions.tg_notify);
+  siteOptions.custom_bd = normalizeCustomBd(siteOptions.custom_bd);
   
   await db.prepare(
     'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
